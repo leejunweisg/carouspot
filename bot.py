@@ -106,10 +106,8 @@ async def confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     # send confirmation message
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text=f"Okay, you are now subscribed to '{item_name}'!\nYou will be notified when new listings are posted."
-    )
+    await context.bot.send_message(chat_id=chat_id, text=f"Okay, you are now subscribed to '{item_name}'! 🎉")
+    await context.bot.send_message(chat_id=chat_id, text=f"You will be notified when new listings are posted!")
 
     return ConversationHandler.END
 
@@ -149,12 +147,12 @@ async def check_new_items(context: ContextTypes.DEFAULT_TYPE):
             )
 
             # prepare message
-            message = f"I found {len(filtered_items)} new listings for {item['name']}!\n\n"
+            message = f"I found {len(filtered_items)} new listings for {item['name']}! ✨\n\n"
             message += "\n\n".join([x.msg_str for x in filtered_items])
 
             for chat_id in item['chats']:
                 try:
-                    await context.bot.send_message(chat_id=chat_id, text=message)
+                    await context.bot.send_message(chat_id=chat_id, text=message, disable_web_page_preview=True)
                 except Forbidden as ex:  # if user stopped the bot
                     logger.error(ex)
         else:
