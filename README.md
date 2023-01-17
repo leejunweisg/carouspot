@@ -3,6 +3,8 @@
 CarouSpot is a Telegram bot that notifies you of new listings on Carousell SG, a community marketplace and classifieds platform.
 Subscribe to keywords to be the first to know about new listings and get notified when they are posted!
 
+Try it out https://t.me/carouspot_bot
+
 ## Features
 1. Subscribe to keywords and get notified when new listings are posted.
 2. Bumped listings (old listings) are automatically excluded.
