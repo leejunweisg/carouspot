@@ -38,12 +38,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     user = update.message.from_user
 
-    # add chat_id to the database
+    # add chat_id to the database. if already exist, just set active to True.
     db.chats.update_one(
         filter={"chat_id": chat_id},
         update={
-            "$setOnInsert": {"chat_id": chat_id, "active": True},  # if chat_id doesn't exist, create it
-            "$set": {"active": True}  # if chat_id exists, set active to True
+            "$setOnInsert": {"chat_id": chat_id},  # if chat_id doesn't exist, create it
+            "$set": {"active": True}
         },
         upsert=True
     )
