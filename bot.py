@@ -148,13 +148,15 @@ async def check_new_items(context: ContextTypes.DEFAULT_TYPE):
             )
 
             # prepare message
-            message = f"I found {len(filtered_items)} new listings for {item['name']}! ✨\n\n"
+            n = len(filtered_items)
+            message = f"<b>I found {n} new {'listing' if n == 1 else 'listings'} for '{item['name']}'! ✨</b>\n\n"
             message += "\n\n".join([x.msg_str for x in filtered_items])
 
             for chat_id in item['chats']:
                 try:
-                    await context.bot.send_message(chat_id=chat_id, text=message, disable_web_page_preview=True)
-                except Forbidden as ex:  # if user stopped the bot
+                    await context.bot.send_message(chat_id=chat_id, text=message, disable_web_page_preview=True,
+                                                   parse_mode=ParseMode.HTML)
+                except Forbidden as ex:  # if user stopped the bot, or message too long
                     logger.error(ex)
         else:
             db.items.update_one(

@@ -29,7 +29,7 @@ class CarousellItem:
 
     @property
     def msg_str(self) -> str:
-        return f"{self.name}\n" + \
+        return f"<b>{self.name[:36] + '...' if len(self.name) > 36 else self.name}\n</b>" + \
                f"{self.price} ({self.condition})\n"  + \
                f"https://carousell.sg{self.url}"
 
