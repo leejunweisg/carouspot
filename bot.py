@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+import html
 
 from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardRemove
@@ -61,6 +62,25 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text="What would you like to subscribe to? (e.g. Xbox)"
     )
     return 0
+
+
+async def subscriptions(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Retrieves and sends the user a list of subscribed items."""
+
+    chat_id = update.message.chat_id
+
+    # get all subscribed items in the database
+    count = db.items.count_documents({"chats": chat_id})
+    subscribed_items = db.items.find({"chats": chat_id})
+
+    # prepare message
+    message = ""
+    for item in subscribed_items:
+        message += f"\n- {item['name']}"
+    message = f"<b>You are subscribed to {count} items!</b>" + html.escape(message)
+
+    # send message
+    await context.bot.send_message(chat_id=chat_id, text=message, parse_mode=ParseMode.HTML)
 
 
 async def confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -157,6 +177,8 @@ def main():
     # todo: create unsubscribe handler
     start_handler = CommandHandler("start", start)
     help_handler = CommandHandler("help", help_msg)
+    subscriptions_handler = CommandHandler("subscriptions", subscriptions)
+
     subscribe_handler = ConversationHandler(
         entry_points=[CommandHandler("subscribe", subscribe)],
         states={
@@ -170,6 +192,7 @@ def main():
     # add handlers
     application.add_handler(start_handler)
     application.add_handler(help_handler)
+    application.add_handler(subscriptions_handler)
     application.add_handler(subscribe_handler)
 
     # continuously poll for updates

@@ -7,7 +7,8 @@ Subscribe to keywords to be the first to know about new listings and get notifie
 2. Bumped listings (old listings) are automatically excluded.
 
 # Todo
-1. Implement unsubscribe.
-2. Improve user experience on the bot (e.g. inline keyboard instead of typing)
-3. Add support for filters (e.g. price range, condition, etc) in subscriptions.
-4. Support for other countries (e.g. Carousell MY, Carousell PH, etc).
+1. Implement `/unsubscribe`.
+2. Handle splitting of long messages (a long list of new items may cause a message to exceed max message length).
+3. Improve user experience on the bot (e.g. inline keyboard instead of typing)
+4. Add support for filters (e.g. price range, condition, etc) in subscriptions.
+5. Support for other countries (e.g. Carousell MY, Carousell PH, etc).
