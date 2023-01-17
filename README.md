@@ -1,12 +1,13 @@
-# CarouSpot
-CarouSpot is a Telegram bot that notifies you of new listings on Carousell SG, a community marketplace/classifieds platform.
+<img src="./assets/logo-transparent.png" width="50%" height="50%" title="Logo" alt="Logo">
+
+CarouSpot is a Telegram bot that notifies you of new listings on Carousell SG, a community marketplace and classifieds platform.
 Subscribe to keywords to be the first to know about new listings and get notified when they are posted!
 
-# Features
+## Features
 1. Subscribe to keywords and get notified when new listings are posted.
 2. Bumped listings (old listings) are automatically excluded.
 
-# Todo
+## Todo
 1. Implement `/unsubscribe`.
 2. Handle splitting of long messages (a long list of new items may cause a message to exceed max message length).
 3. Improve user experience on the bot (e.g. inline keyboard instead of typing)
