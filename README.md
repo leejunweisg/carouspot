@@ -10,7 +10,7 @@ Subscribe to keywords to be the first to know about new listings and get notifie
 ## Instructions
 ### Docker
 ```shell
-docker run ghcr.io/leejunweisg/carouspot:main -itd --env MONGO_URL="your_mongo_url" --env BOT_TOKEN="your_bot_token"
+docker run -itd --env MONGO_URL="your_mongo_url" --env BOT_TOKEN="your_bot_token" ghcr.io/leejunweisg/carouspot:main
 ```
 Two environment variables must be passed into the Docker container:
 - `MONGO_URL`: The connection URL to your MongoDB instance.
