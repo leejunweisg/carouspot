@@ -4,9 +4,10 @@ import time
 import html
 
 from dotenv import load_dotenv
-from telegram import Update, ReplyKeyboardRemove
+from telegram import Update, ReplyKeyboardRemove, BotCommand
 from telegram.error import Forbidden
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler, filters, MessageHandler
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler, filters, MessageHandler, \
+    Application
 from telegram.constants import ParseMode
 from database import Database
 from scraper import scrape, filter_items, CarousellItem
@@ -163,12 +164,25 @@ async def check_new_items(context: ContextTypes.DEFAULT_TYPE):
             )
 
 
+async def startup(application: Application):
+    """Runs when the bot is first started"""
+
+    # set bot commands (to enable command suggestions and "menu" button in Telegram clients)
+    await application.updater.bot.set_my_commands(commands=[
+        BotCommand(command="start", description="let's begin!"),
+        BotCommand(command="help", description="what the bot can do"),
+        BotCommand(command="subscribe", description="subscribe to a new keyword"),
+        BotCommand(command="subscriptions", description="view your existing subscriptions")
+    ])
+
+
 def main():
     # create bot application
     application = ApplicationBuilder().token(os.getenv("BOT_TOKEN")).build()
-    job_queue = application.job_queue
+    application.post_init = startup
 
     # periodic jobs
+    job_queue = application.job_queue
     job_half_hourly = job_queue.run_repeating(callback=check_new_items, interval=1800, first=5)
 
     # create handlers
