@@ -58,7 +58,7 @@ def scrape(item_name: str) -> List[CarousellItem]:
 
     # parse each item
     items = []
-    for item in raw_items[1:]:
+    for item in raw_items:
         # extract details
         name = item.contents[0].contents[0].contents[1].contents[1].string
         url = item.contents[0].contents[0].contents[1]['href']

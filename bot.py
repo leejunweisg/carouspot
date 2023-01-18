@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardRemove, BotCommand
 from telegram.error import Forbidden
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler, filters, MessageHandler, \
-    Application
+    Application, ChatMemberHandler, CallbackContext
 from telegram.constants import ParseMode
 from database import Database
 from scraper import scrape, filter_items, CarousellItem
@@ -148,28 +148,42 @@ async def check_new_items(context: ContextTypes.DEFAULT_TYPE):
                 upsert=False
             )
 
+            # filter for active chat_ids
+            active_chats = db.chats.find(filter={"chat_id": {"$in": item['chats']}, "active": True},
+                                         projection={"chat_id": True})
+            active_chats = [x['chat_id'] for x in active_chats]
+
             # prepare message
             n = len(filtered_items)
             message = f"<b>I found {n} new {'listing' if n == 1 else 'listings'} for '{item['name']}'! ✨</b>\n\n"
             message += "\n\n".join([x.msg_str for x in filtered_items])
 
             # iterate through each subscriber of this item
-            # todo: filter for only chats that are 'active'
-            for chat_id in item['chats']:
+            for chat_id in active_chats:
                 # iterate through each message and send
                 for m in split_message(message):
                     try:
                         await context.bot.send_message(chat_id=chat_id, text=m, disable_web_page_preview=True,
                                                        parse_mode=ParseMode.HTML)
                     except Forbidden as ex:
-                        # todo: handle when chats blocked (or stopped) the bot
-                        logger.error(ex)
+                        logger.error(str(ex))
         else:
             db.items.update_one(
                 filter={"name": item["name"]},
                 update={"$set": {"last_updated": time.time()}},
                 upsert=False
             )
+
+
+async def chat_member_updates(update: Update, context: CallbackContext):
+    """Updates database if bot was kicked from a chat"""
+
+    new_status = update.my_chat_member.new_chat_member.status
+    chat_id = update.my_chat_member.chat.id
+
+    if new_status in ["kicked", "left"]:
+        db.chats.update_one(filter={"chat_id": chat_id}, update={"$set": {"active": False}}, upsert=False)
+        logger.info(f"Chat ID {chat_id} has stopped the bot. Database updated.")
 
 
 async def startup(application: Application):
@@ -209,11 +223,14 @@ def main():
         ],
     )
 
+    chat_member_handler = ChatMemberHandler(chat_member_updates)
+
     # add handlers
     application.add_handler(start_handler)
     application.add_handler(help_handler)
     application.add_handler(subscriptions_handler)
     application.add_handler(subscribe_handler)
+    application.add_handler(chat_member_handler)
 
     # continuously poll for updates
     application.run_polling()
