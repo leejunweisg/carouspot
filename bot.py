@@ -11,6 +11,7 @@ from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, Conve
 from telegram.constants import ParseMode
 from database import Database
 from scraper import scrape, filter_items, CarousellItem
+from utils import split_message
 
 # logging
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
@@ -152,12 +153,17 @@ async def check_new_items(context: ContextTypes.DEFAULT_TYPE):
             message = f"<b>I found {n} new {'listing' if n == 1 else 'listings'} for '{item['name']}'! ✨</b>\n\n"
             message += "\n\n".join([x.msg_str for x in filtered_items])
 
+            # iterate through each subscriber of this item
+            # todo: filter for only chats that are 'active'
             for chat_id in item['chats']:
-                try:
-                    await context.bot.send_message(chat_id=chat_id, text=message, disable_web_page_preview=True,
-                                                   parse_mode=ParseMode.HTML)
-                except Forbidden as ex:  # if user stopped the bot, or message too long
-                    logger.error(ex)
+                # iterate through each message and send
+                for m in split_message(message):
+                    try:
+                        await context.bot.send_message(chat_id=chat_id, text=m, disable_web_page_preview=True,
+                                                       parse_mode=ParseMode.HTML)
+                    except Forbidden as ex:
+                        # todo: handle when chats blocked (or stopped) the bot
+                        logger.error(ex)
         else:
             db.items.update_one(
                 filter={"name": item["name"]},
