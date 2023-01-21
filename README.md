@@ -36,7 +36,6 @@ Two environment variables must be passed into the Docker container:
    ```
 
 ## Todo
-1. Implement `/unsubscribe`.
-2. Improve user experience on the bot (e.g. inline keyboard instead of typing)
-3. Add support for filters (e.g. price range, condition, etc) in subscriptions.
-4. Support for other countries (e.g. Carousell MY, Carousell PH, etc).
+1. Improve user experience on the bot (e.g. inline keyboard instead of typing)
+2. Add support for filters (e.g. price range, condition, etc) in subscriptions.
+3. Support for other countries (e.g. Carousell MY, Carousell PH, etc).

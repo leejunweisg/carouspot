@@ -4,10 +4,10 @@ import time
 import html
 
 from dotenv import load_dotenv
-from telegram import Update, ReplyKeyboardRemove, BotCommand
+from telegram import Update, ReplyKeyboardRemove, BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import Forbidden
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler, filters, MessageHandler, \
-    Application, ChatMemberHandler, CallbackContext
+    Application, ChatMemberHandler, CallbackContext, CallbackQueryHandler
 from telegram.constants import ParseMode
 from database import Database
 from scraper import scrape, filter_items, CarousellItem
@@ -29,7 +29,11 @@ async def help_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="Here's what I can do:\n- /subscribe: subscribe to a new item\n- /unsubscribe: unsubscribe from an item"
+        text="Here's what I can do:\n" + \
+             "- /subscribe: subscribe to a new item\n" + \
+             "- /unsubscribe: unsubscribe from an item\n" + \
+             "- /subscriptions: view existing subscriptions\n" + \
+             "- /help: view this message\n"
     )
 
 
@@ -56,16 +60,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Starts the conversation and asks the user for the item they want to subscribe to."""
-
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="What would you like to subscribe to? (e.g. Xbox)"
-    )
-    return 0
-
-
 async def subscriptions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Retrieves and sends the user a list of subscribed items."""
 
@@ -83,6 +77,16 @@ async def subscriptions(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # send message
     await context.bot.send_message(chat_id=chat_id, text=message, parse_mode=ParseMode.HTML)
+
+
+async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Starts the conversation and asks the user for the item they want to subscribe to."""
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="What would you like to subscribe to? (e.g. Xbox)"
+    )
+    return 0
 
 
 async def confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -110,6 +114,49 @@ async def confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # send confirmation message
     await context.bot.send_message(chat_id=chat_id, text=f"Okay, you are now subscribed to '{item_name}'! 🎉")
     await context.bot.send_message(chat_id=chat_id, text=f"You will be notified when new listings are posted!")
+
+    return ConversationHandler.END
+
+
+async def unsubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Starts the conversation and asks the user for the item they want to unsubscribe from."""
+
+    chat_id = update.message.chat_id
+
+    # get subscribed items of this user in the database
+    subscribed_items = db.items.find({"chats": chat_id})
+
+    # if the user has subscribed items, present a inline keyboard
+    if subscribed_items:
+        # prepare inline keyboard
+        keyboard = [[InlineKeyboardButton(x['name'], callback_data=x['name'])] for x in subscribed_items]
+
+        # send reply with the inline keyboard
+        await update.message.reply_text("Which item would you like to unsubscribe from?", reply_markup=InlineKeyboardMarkup(keyboard))
+
+        return 0
+
+    # the user is not subscribed to any items, end the conversation
+    await update.message.reply_text("You are not subscribed to any items!")
+
+    return ConversationHandler.END
+
+
+async def unsubscribe_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # wait for answer
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text(text=f"Which item would you like to unsubscribe from?\n\nYou have selected '{query.data}'.")
+
+    chat_id = query.message.chat_id
+
+    # update database, remove chat from list of subscribed chats
+    db.items.update_one(filter={"name": query.data}, update={"$pull": {"chats": chat_id}})
+
+    # todo: remove item from database if no more chats are subscribed to it
+
+    # send success message
+    await context.bot.send_message(chat_id=chat_id, text=f"Success! You have been unsubscribed from '{query.data}!' ✅")
 
     return ConversationHandler.END
 
@@ -194,7 +241,8 @@ async def startup(application: Application):
         BotCommand(command="start", description="let's begin!"),
         BotCommand(command="help", description="what the bot can do"),
         BotCommand(command="subscribe", description="subscribe to a new keyword"),
-        BotCommand(command="subscriptions", description="view your existing subscriptions")
+        BotCommand(command="unsubscribe", description="unsubscribe to a keyword"),
+        BotCommand(command="subscriptions", description="view existing subscriptions")
     ])
 
 
@@ -223,12 +271,23 @@ def main():
         ],
     )
 
+    unsubscribe_handler = ConversationHandler(
+        entry_points=[CommandHandler("unsubscribe", unsubscribe)],
+        states={
+            0: [CallbackQueryHandler(unsubscribe_confirmation)],
+        },
+        fallbacks=[
+            CommandHandler("cancel", cancel),
+        ],
+    )
+
     chat_member_handler = ChatMemberHandler(chat_member_updates)
 
     # add handlers
     application.add_handler(start_handler)
     application.add_handler(help_handler)
     application.add_handler(subscriptions_handler)
+    application.add_handler(unsubscribe_handler)
     application.add_handler(subscribe_handler)
     application.add_handler(chat_member_handler)
 
