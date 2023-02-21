@@ -10,7 +10,7 @@ from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, Conve
     Application, ChatMemberHandler, CallbackContext, CallbackQueryHandler
 from telegram.constants import ParseMode
 from database import Database
-from scraper import scrape, filter_items, CarousellItem
+from scraper import scrape, filter_items
 from utils import split_message
 
 # logging

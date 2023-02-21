@@ -1,22 +1,32 @@
-import re
+import json
+import logging
 from typing import List
 
-import requests
-import urllib.parse
-from bs4 import BeautifulSoup
+from selenium.webdriver import Keys
+from selenium.webdriver.support.wait import WebDriverWait
+from seleniumwire import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support import expected_conditions as EC
+from seleniumwire.utils import decode
+from slugify import slugify
+
+# reduce selenium-wire logging level
+selenium_logger = logging.getLogger('seleniumwire')
+selenium_logger.setLevel(logging.WARNING)
 
 
 class CarousellItem:
     """Represents a Carousell item"""
 
-    def __init__(self, name: str, url: str, price: str, condition: str, username: str, bumped: bool):
+    def __init__(self, name: str, url: str, price: str, condition: str, username: str, bumped: bool, item_id: int):
         self.name: str = name
         self.url: str = url
         self.condition: str = condition
         self.price: str = price
         self.username: str = username
         self.bumped: bool = bumped
-        self.item_id: int = int(re.findall(r'\d+', url)[-1])
+        self.item_id: int = item_id
 
     def __str__(self) -> str:
         return f"{self.name}\n" + \
@@ -30,52 +40,85 @@ class CarousellItem:
     @property
     def msg_str(self) -> str:
         return f"<b>{self.name[:36] + '...' if len(self.name) > 36 else self.name}\n</b>" + \
-               f"{self.price} ({self.condition})\n"  + \
+               f"{self.price} ({self.condition})\n" + \
                f"https://carousell.sg{self.url}"
 
 
 def scrape(item_name: str) -> List[CarousellItem]:
-    """Scrapes Carousell for items with the given item_name
-
-    :param item_name: the name of the item to search on Carousell
-    :return: a list of CarousellItem objects representing the scraped items
+    """
+    Scrapes carousell for items with the given item_name
+    :param item_name: the search term to scrape
+    :return: list of CarousellItem objects
     """
 
-    # encode item name for URL
-    encoded_item_name = urllib.parse.quote_plus(item_name)
+    # create headless chrome driver
+    options = Options()
+    options.add_argument("--no-sandbox")
+    options.add_argument("--headless=new")
+    options.add_argument("--disable-logging")
+    options.add_argument("--log-level=3")
+    options.add_experimental_option("excludeSwitches", ["enable-logging"])
 
-    # carousell search URL, sorted by "most recent"
-    url = f"https://www.carousell.sg/search/\"{encoded_item_name}\"?addRecent=false&canChangeKeyword=false&includeSuggestions=false&sort_by=3"
+    driver = webdriver.Chrome(options=options)
 
-    # make the request
-    page = requests.get(url)
+    # browse to carousell
+    driver.get(
+        f"https://www.carousell.sg/search/\"placeholder\"?addRecent=false&canChangeKeyword=false&includeSuggestions=false&sort_by=3")
 
-    # use beautiful soup to parse the HTML
-    soup = BeautifulSoup(page.content, "html.parser")
+    # find search box
+    search_box = driver.find_element(By.XPATH,
+                                     '//*[@id="root"]/div[2]/header/div/div[2]/div/div[1]/div/div[1]/div/div/div/input')
 
-    # extract list of item listings
-    raw_items = soup.main.main.contents[0].contents[0].contents  # each item is class="D_rA D_wQ"
+    # populate textbox
+    search_box.send_keys(Keys.CONTROL + "a")
+    search_box.send_keys(Keys.DELETE)
+    search_box.send_keys(f'"{item_name}"')
 
-    # parse each item
+    # find and click search button
+    search_button = driver.find_element(By.XPATH, '//*[@id="root"]/div[2]/header/div/div[2]/div/div/div/div[5]/button')
+    search_button.click()
+
     items = []
-    for item in raw_items:
-        # extract details
-        name = item.contents[0].contents[0].contents[1].contents[1].string
-        url = item.contents[0].contents[0].contents[1]['href']
-        condition = item.contents[0].contents[0].contents[1].contents[4].string
-        price = item.contents[0].contents[0].contents[1].contents[2].p['title']
-        username = item.contents[0].contents[0].contents[0].contents[1].contents[0].string
-        bumped = len(item.contents[0].contents[0].contents[0].contents[1].contents[1]) == 2
 
-        # instantiate and store item
-        items.append(CarousellItem(name, url, price, condition, username, bumped))
+    # wait until search completed
+    try:
+        WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, '//*[@id="main"]/div[1]/div/section[2]/div[1]/div/div/button'))
+        )
+
+        # find the request containing the listing search results
+        for request in driver.requests:
+            if request.response and '/ds/filter/cf/4.0/search/' in request.path:
+                body = decode(request.response.body,
+                              request.response.headers.get('Content-Encoding', 'identity')).decode('utf-8')
+                items_dict = json.loads(body)
+
+                for item in items_dict['data']['results']:
+                    # ignore spotlight items ("promotedListingCard")
+                    if "listingCard" not in item:
+                        continue
+
+                    # extract details
+                    item_id = int(item['listingCard']['id'])
+                    name = item['listingCard']['belowFold'][0]['stringContent']
+                    url = f'/p/{slugify(name)}-{item_id}/'
+                    price = item['listingCard']['belowFold'][1]['stringContent']
+                    condition = item['listingCard']['belowFold'][3]['stringContent']
+                    username = item['listingCard']['seller']['username']
+                    bumped = item['listingCard']['aboveFold'][0]['component'] == "active_bump"
+
+                    # instantiate and store CarousellItems
+                    items.append(CarousellItem(name, url, price, condition, username, bumped, item_id))
+
+                break
+    finally:
+        driver.quit()
 
     return items
 
 
 def filter_items(items: List[CarousellItem], last_id: int = -1, removed_bumped: bool = True) -> List[CarousellItem]:
     """Filters a list of CarousellItem objects
-
     :param items: a list of CarousellItem objects
     :param last_id: the last item_id that was previously scraped for this item
     :param removed_bumped: whether to exclude bumped items
