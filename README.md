@@ -12,8 +12,6 @@ Try it out https://t.me/carouspot_bot
 ## Instructions
 ### Docker
 
-**Warning:** The docker image will not work correctly as the project has not been dockerised for the new Selenium-based scraper.
-
 ```shell
 docker run -itd --env MONGO_URL="your_mongo_url" --env BOT_TOKEN="your_bot_token" ghcr.io/leejunweisg/carouspot:main
 ```
