@@ -15,6 +15,7 @@ RUN pip install -r requirements.txt
 # install selenium wire ca certificate
 RUN apt-get install libnss3-tools
 RUN python3 -m seleniumwire extractcert
+RUN mkdir -p $HOME/.pki/nssdb
 RUN certutil -d sql:$HOME/.pki/nssdb -A -t TC -n "Selenium Wire" -i ca.crt
 
 CMD ["python3", "./bot.py"]
