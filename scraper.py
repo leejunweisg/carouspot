@@ -4,12 +4,14 @@ from typing import List
 
 from selenium.webdriver import Keys
 from selenium.webdriver.support.wait import WebDriverWait
-from seleniumwire import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service as ChromeService
+from seleniumwire import webdriver
 from seleniumwire.utils import decode
 from slugify import slugify
+from webdriver_manager.chrome import ChromeDriverManager
 
 # reduce selenium-wire logging level
 selenium_logger = logging.getLogger('seleniumwire')
@@ -30,18 +32,18 @@ class CarousellItem:
 
     def __str__(self) -> str:
         return f"{self.name}\n" + \
-               f"URL: {self.url}\n" + \
-               f"Item ID: {self.item_id}\n" + \
-               f"Price: {self.price}\n" + \
-               f"Condition: {self.condition}\n" + \
-               f"Username: {self.username}\n" + \
-               f"Bumped: {self.bumped}\n"
+            f"URL: {self.url}\n" + \
+            f"Item ID: {self.item_id}\n" + \
+            f"Price: {self.price}\n" + \
+            f"Condition: {self.condition}\n" + \
+            f"Username: {self.username}\n" + \
+            f"Bumped: {self.bumped}\n"
 
     @property
     def msg_str(self) -> str:
         return f"<b>{self.name[:36] + '...' if len(self.name) > 36 else self.name}\n</b>" + \
-               f"{self.price} ({self.condition})\n" + \
-               f"https://carousell.sg{self.url}"
+            f"{self.price} ({self.condition})\n" + \
+            f"https://carousell.sg{self.url}"
 
 
 def scrape(item_name: str) -> List[CarousellItem]:
@@ -55,19 +57,19 @@ def scrape(item_name: str) -> List[CarousellItem]:
     options = Options()
     options.add_argument("--no-sandbox")
     options.add_argument("--headless=new")
-    options.add_argument("--disable-logging")
-    options.add_argument("--log-level=3")
-    options.add_experimental_option("excludeSwitches", ["enable-logging"])
+    options.add_argument("--disable-dev-shm-usage")
 
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
 
     # browse to carousell
     driver.get(
         f"https://www.carousell.sg/search/\"placeholder\"?addRecent=false&canChangeKeyword=false&includeSuggestions=false&sort_by=3")
 
     # find search box
-    search_box = driver.find_element(By.XPATH,
-                                     '//*[@id="root"]/div[2]/header/div/div[2]/div/div[1]/div/div[1]/div/div/div/input')
+    search_box = driver.find_element(
+        By.XPATH,
+        '//*[@id="root"]/div[2]/header/div/div[2]/div/div[1]/div/div[1]/div/div/div/input'
+    )
 
     # populate textbox
     search_box.send_keys(Keys.CONTROL + "a")
