@@ -182,8 +182,18 @@ async def check_new_items(context: ContextTypes.DEFAULT_TYPE):
 
     # iterate through each item
     for item in subscribed_items:
-        # scrape and filer items
-        scraped_items = scrape(item["name"])
+        # scrape carousell
+        try:
+            logging.info(f"Scraping '{item}'")
+            scraped_items = scrape(item["name"])
+        except Exception as e:
+            logging.error(f"An error has occurred while scraping '{item}', skipped.")
+            logging.error(e, exc_info=True)
+            continue
+
+        logging.info(f"Processing '{item}'")
+
+        # filter items
         filtered_items = filter_items(scraped_items, last_id=item["last_item_id"])
 
         # if there are new items, send notification to subscribed chats
@@ -220,6 +230,8 @@ async def check_new_items(context: ContextTypes.DEFAULT_TYPE):
                 update={"$set": {"last_updated": time.time()}},
                 upsert=False
             )
+
+        logging.info(f"Done processing '{item}'")
 
 
 async def chat_member_updates(update: Update, context: CallbackContext):
