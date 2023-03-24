@@ -184,14 +184,14 @@ async def check_new_items(context: ContextTypes.DEFAULT_TYPE):
     for item in subscribed_items:
         # scrape carousell
         try:
-            logging.info(f"Scraping '{item}'")
+            logging.info(f"Scraping '{item['name']}'")
             scraped_items = scrape(item["name"])
         except Exception as e:
-            logging.error(f"An error has occurred while scraping '{item}', skipped.")
+            logging.error(f"An error has occurred while scraping '{item['name']}', skipped.")
             logging.error(e, exc_info=True)
             continue
 
-        logging.info(f"Processing '{item}'")
+        logging.info(f"Processing '{item['name']}'")
 
         # filter items
         filtered_items = filter_items(scraped_items, last_id=item["last_item_id"])
@@ -231,7 +231,7 @@ async def check_new_items(context: ContextTypes.DEFAULT_TYPE):
                 upsert=False
             )
 
-        logging.info(f"Done processing '{item}'")
+        logging.info(f"Done processing '{item['name']}'")
 
 
 async def chat_member_updates(update: Update, context: CallbackContext):
