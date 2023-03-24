@@ -153,7 +153,10 @@ async def unsubscribe_confirmation(update: Update, context: ContextTypes.DEFAULT
     # update database, remove chat from list of subscribed chats
     db.items.update_one(filter={"name": query.data}, update={"$pull": {"chats": chat_id}})
 
-    # todo: remove item from database if no more chats are subscribed to it
+    # remove item from database if no more chats are subscribed to it
+    item = db.items.find_one(filter={"name": query.data})
+    if len(item['chats']) == 0:
+        db.items.delete_one(filter={"name": query.data})
 
     # send success message
     await context.bot.send_message(chat_id=chat_id, text=f"Success! You have been unsubscribed from '{query.data}!' ✅")
