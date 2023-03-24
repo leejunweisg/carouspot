@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from typing import List
 
 from selenium.webdriver import Keys
@@ -17,6 +18,9 @@ from webdriver_manager.chrome import ChromeDriverManager
 selenium_logger = logging.getLogger('seleniumwire')
 selenium_logger.setLevel(logging.WARNING)
 
+# turn off WebDriver Manager logging, there seems to be no way to define logging level
+os.environ['WDM_LOG'] = str(logging.NOTSET)
+
 
 class CarousellItem:
     """Represents a Carousell item"""
@@ -32,18 +36,18 @@ class CarousellItem:
 
     def __str__(self) -> str:
         return f"{self.name}\n" + \
-            f"URL: {self.url}\n" + \
-            f"Item ID: {self.item_id}\n" + \
-            f"Price: {self.price}\n" + \
-            f"Condition: {self.condition}\n" + \
-            f"Username: {self.username}\n" + \
-            f"Bumped: {self.bumped}\n"
+               f"URL: {self.url}\n" + \
+               f"Item ID: {self.item_id}\n" + \
+               f"Price: {self.price}\n" + \
+               f"Condition: {self.condition}\n" + \
+               f"Username: {self.username}\n" + \
+               f"Bumped: {self.bumped}\n"
 
     @property
     def msg_str(self) -> str:
         return f"<b>{self.name[:36] + '...' if len(self.name) > 36 else self.name}\n</b>" + \
-            f"{self.price} ({self.condition})\n" + \
-            f"https://carousell.sg{self.url}"
+               f"{self.price} ({self.condition})\n" + \
+               f"https://carousell.sg{self.url}"
 
 
 def scrape(item_name: str) -> List[CarousellItem]:
@@ -71,9 +75,9 @@ def scrape(item_name: str) -> List[CarousellItem]:
         '//*[@id="root"]/div[2]/header/div/div[2]/div/div[1]/div/div[1]/div/div/div/input'
     )
 
-    # populate textbox
-    search_box.send_keys(Keys.CONTROL + "a")
-    search_box.send_keys(Keys.DELETE)
+    # clear and populate textbox with item name
+    for _ in range(100):
+        search_box.send_keys(Keys.BACKSPACE)
     search_box.send_keys(f'"{item_name}"')
 
     # find and click search button
